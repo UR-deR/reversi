@@ -1,0 +1,22 @@
+{
+  "name": "reversi",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/axtx4869/reversi.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/axtx4869/reversi/issues"
+  },
+  "homepage": "https://github.com/axtx4869/reversi#readme"
+}
