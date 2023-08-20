@@ -35,13 +35,15 @@ async function showBoard() {
         squareElement.appendChild(stoneElement)
       }
 
-      boardElement.appendChild(squareElement)
-    })
-  })
+async function registerGame() {
+  await fetch('/api/games', {
+    method: 'POST',
+  });
 }
 
 async function main() {
-  await showBoard()
+  await registerGame();
+  await showBoard();
 }
 
 main()
