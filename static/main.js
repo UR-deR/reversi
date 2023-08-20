@@ -16,11 +16,15 @@ const INITIAL_BOARD = [
 const boardElement = document.getElementById('board');
 
 async function showBoard() {
+  const INITIAL_TURN_COUNT = 0;
+  const initialBoardState = await fetch(`/api/games/latest/turns/${INITIAL_TURN_COUNT}`);
+  const initialBoard = await initialBoardState.json();
+
   while (boardElement.firstChild) {
     boardElement.removeChild(boardElement.firstChild);
   }
 
-  INITIAL_BOARD.forEach((line) => {
+  initialBoard.board.forEach((line) => {
     line.forEach((square) => {
       // <div class="square">
       const squareElement = document.createElement('div');
