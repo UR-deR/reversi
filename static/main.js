@@ -15,9 +15,8 @@ const INITIAL_BOARD = [
 
 const boardElement = document.getElementById('board');
 
-async function showBoard() {
-  const INITIAL_TURN_COUNT = 0;
-  const initialBoardState = await fetch(`/api/games/latest/turns/${INITIAL_TURN_COUNT}`);
+async function showBoard(turnCount) {
+  const initialBoardState = await fetch(`/api/games/latest/turns/${turnCount}`);
   const initialBoard = await initialBoardState.json();
   const { board, nextDisc } = initialBoard;
 
@@ -40,8 +39,9 @@ async function showBoard() {
         squareElement.appendChild(stoneElement);
       } else {
         squareElement.addEventListener('click', async () => {
-          const nextTurnCount = INITIAL_TURN_COUNT + 1;
+          const nextTurnCount = turnCount + 1;
           await registerTurn(nextTurnCount, nextDisc, x, y);
+          await showBoard(nextTurnCount);
         });
       }
 
@@ -77,7 +77,7 @@ async function registerTurn(turnCount, disc, x, y) {
 
 async function main() {
   await registerGame();
-  await showBoard();
+  await showBoard(0);
 }
 
 main();
