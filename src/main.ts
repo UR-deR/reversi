@@ -77,6 +77,49 @@ app.post('/api/games', async (req, res) => {
   res.status(201).end();
 });
 
+app.get('/api/games/latest/turns/:turnCount', async (req, res) => {
+  const turnCount = parseInt(req.params.turnCount, 10);
+  const dbConnection = await connectMysql();
+
+  try {
+    const [gameSelectResult] = await dbConnection.execute<mysql.RowDataPacket[]>(
+      'SELECT id, started_at FROM games ORDER BY id DESC LIMIT 1'
+    );
+
+    const [game] = gameSelectResult;
+
+    const [turnSelectResult] = await dbConnection.execute<mysql.RowDataPacket[]>(
+      'SELECT id, turn_count, next_disc, end_at FROM turns WHERE game_id = ? AND turn_count = ?',
+      [game.id, turnCount]
+    );
+
+    const [turn] = turnSelectResult;
+
+    const squaresSelectResult = await dbConnection.execute<mysql.RowDataPacket[]>(
+      'SELECT x, y, disc FROM squares WHERE turn_id = ? ORDER BY y ASC, x ASC',
+      [turn.id]
+    );
+
+    const [squares] = squaresSelectResult;
+
+    const board = Array.from(Array(8)).map(() => Array.from(Array(8)));
+    squares.forEach((square) => {
+      board[square.y][square.x] = square.disc;
+    });
+
+    const responseBody = {
+      turnCount,
+      board,
+      nextDisc: turn.next_disc,
+      winnerDisc: null,
+    };
+
+    res.json(responseBody);
+  } finally {
+    await dbConnection.end();
+  }
+});
+
 app.use(errorHandler);
 
 app.listen(PORT, () => {
