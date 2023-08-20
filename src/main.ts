@@ -39,12 +39,7 @@ app.get('/error', (req, res) => {
 
 app.post('/api/games', async (req, res) => {
   const now = new Date();
-  const dbConnection = await mysql.createConnection({
-    host: 'localhost',
-    database: 'reversi',
-    user: 'reversi',
-    password: 'password',
-  });
+  const dbConnection = await connectMysql();
 
   try {
     await dbConnection.beginTransaction();
@@ -91,4 +86,15 @@ app.listen(PORT, () => {
 function errorHandler(err: any, req: express.Request, res: express.Response, next: express.NextFunction) {
   console.error(`Error occurred at ${req.method} ${req.url}\n${err.stack}`);
   res.status(500).json({ message: 'Something went wrong' });
+}
+
+async function connectMysql() {
+  const dbConnection = await mysql.createConnection({
+    host: 'localhost',
+    database: 'reversi',
+    user: 'reversi',
+    password: 'password',
+  });
+
+  return dbConnection;
 }
