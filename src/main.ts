@@ -33,10 +33,6 @@ app.use(express.json());
 
 const gameGateway = new GameGateway();
 
-app.get('/', (req, res) => {
-  res.json({ message: 'Hello!' });
-});
-
 app.get('/error', (req, res) => {
   throw new Error('Error!');
 });
