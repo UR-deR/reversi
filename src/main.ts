@@ -3,6 +3,9 @@ import morgan from 'morgan';
 import 'express-async-errors';
 import mysql from 'mysql2/promise';
 import { GameGateway } from './dataaccess/gameGateway';
+import { TurnGateway } from './dataaccess/turnGateway';
+import { MoveGateway } from './dataaccess/moveGateway';
+import { SquareGateway } from './dataaccess/squareGateway';
 
 const EMPTY = 0;
 const DARK = 1;
@@ -17,7 +20,7 @@ const INITIAL_BOARD = [
   [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
   [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
   [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
-] as const;
+];
 
 const app = express();
 
@@ -32,6 +35,9 @@ app.use(
 app.use(express.json());
 
 const gameGateway = new GameGateway();
+const turnGateway = new TurnGateway();
+const moveGateway = new MoveGateway();
+const squareGateway = new SquareGateway();
 
 app.get('/error', (req, res) => {
   throw new Error('Error!');
@@ -46,24 +52,8 @@ app.post('/api/games', async (req, res) => {
 
     const gameRecord = await gameGateway.insert(dbConnection, now);
 
-    const [turnInsertResult] = await dbConnection.execute<mysql.ResultSetHeader>(
-      'INSERT INTO turns (game_id, turn_count, next_disc, end_at) VALUES (?, ?, ?, ?)',
-      [gameRecord.id, 0, DARK, now]
-    );
-
-    const turnId = turnInsertResult.insertId;
-
-    const squareCount = INITIAL_BOARD.map((row) => row.length).reduce((a, b) => a + b, 0);
-
-    const squaresInsertSql =
-      'INSERT INTO squares (turn_id, x, y, disc) VALUES ' +
-      Array.from(Array(squareCount))
-        .map(() => '(?, ?, ?, ?)')
-        .join(', ');
-
-    const squaresInsertValues = INITIAL_BOARD.flatMap((row, y) => row.map((state, x) => [turnId, x, y, state])).flat();
-
-    await dbConnection.execute(squaresInsertSql, squaresInsertValues);
+    const turnRecord = await turnGateway.insert(dbConnection, gameRecord.id, 0, DARK, now);
+    await squareGateway.insertAll(dbConnection, turnRecord.id, INITIAL_BOARD);
     await dbConnection.commit();
   } finally {
     await dbConnection.end();
@@ -80,32 +70,26 @@ app.get('/api/games/latest/turns/:turnCount', async (req, res) => {
     const gameRecord = await gameGateway.findLatest(dbConnection);
 
     if (!gameRecord) {
-      throw new Error(`Game not found. Turn count: ${turnCount}`);
+      throw new Error(`Game not found`);
     }
 
-    const [turnSelectResult] = await dbConnection.execute<mysql.RowDataPacket[]>(
-      'SELECT id, turn_count, next_disc, end_at FROM turns WHERE game_id = ? AND turn_count = ?',
-      [gameRecord.id, turnCount]
-    );
+    const turnRecord = await turnGateway.findForGameAndTurnCount(dbConnection, gameRecord.id, turnCount);
 
-    const [turn] = turnSelectResult;
+    if (!turnRecord) {
+      throw new Error(`Turn not found`);
+    }
 
-    const squaresSelectResult = await dbConnection.execute<mysql.RowDataPacket[]>(
-      'SELECT x, y, disc FROM squares WHERE turn_id = ? ORDER BY y ASC, x ASC',
-      [turn.id]
-    );
-
-    const [squares] = squaresSelectResult;
+    const squareRecords = await squareGateway.findAllByTurnId(dbConnection, turnRecord.id);
 
     const board = Array.from(Array(8)).map(() => Array.from(Array(8)));
-    squares.forEach((square) => {
+    squareRecords.forEach((square) => {
       board[square.y][square.x] = square.disc;
     });
 
     const responseBody = {
       turnCount,
       board,
-      nextDisc: turn.next_disc,
+      nextDisc: turnRecord.nextDisc,
       winnerDisc: null,
     };
 
@@ -124,6 +108,7 @@ app.post('/api/games/latest/turns', async (req, res) => {
   const dbConnection = await connectMysql();
 
   try {
+    //　1つ前のターンを取得する
     const gameRecord = await gameGateway.findLatest(dbConnection);
 
     if (!gameRecord) {
@@ -132,22 +117,20 @@ app.post('/api/games/latest/turns', async (req, res) => {
 
     const previousTurnCount = turnCount - 1;
 
-    const [turnSelectResult] = await dbConnection.execute<mysql.RowDataPacket[]>(
-      'SELECT id, turn_count, next_disc, end_at FROM turns WHERE game_id = ? AND turn_count = ?',
-      [gameRecord.id, previousTurnCount]
+    const previousTurnRecord = await turnGateway.findForGameAndTurnCount(
+      dbConnection,
+      gameRecord.id,
+      previousTurnCount
     );
 
-    const [turn] = turnSelectResult;
+    if (!previousTurnRecord) {
+      throw new Error(`Turn not found`);
+    }
 
-    const squaresSelectResult = await dbConnection.execute<mysql.RowDataPacket[]>(
-      'SELECT x, y, disc FROM squares WHERE turn_id = ? ORDER BY y ASC, x ASC',
-      [turn.id]
-    );
-
-    const [squares] = squaresSelectResult;
+    const squareRecords = await squareGateway.findAllByTurnId(dbConnection, previousTurnRecord.id);
 
     const board = Array.from(Array(8)).map(() => Array.from(Array(8)));
-    squares.forEach((square) => {
+    squareRecords.forEach((square) => {
       board[square.y][square.x] = square.disc;
     });
 
@@ -155,25 +138,11 @@ app.post('/api/games/latest/turns', async (req, res) => {
 
     const now = new Date();
     const nextDisc = disc === DARK ? LIGHT : DARK;
-    const [turnInsertResult] = await dbConnection.execute<mysql.ResultSetHeader>(
-      'INSERT INTO turns (game_id, turn_count, next_disc, end_at) VALUES (?, ?, ?, ?)',
-      [gameRecord.id, turnCount, nextDisc, now]
-    );
+    const turnRecord = await turnGateway.insert(dbConnection, gameRecord.id, turnCount, nextDisc, now);
 
-    const turnId = turnInsertResult.insertId;
+    await squareGateway.insertAll(dbConnection, turnRecord.id, board);
 
-    const squareCount = board.map((row) => row.length).reduce((a, b) => a + b, 0);
-
-    const squaresInsertSql =
-      'INSERT INTO squares (turn_id, x, y, disc) VALUES ' +
-      Array.from(Array(squareCount))
-        .map(() => '(?, ?, ?, ?)')
-        .join(', ');
-
-    const squaresInsertValues = board.flatMap((row, y) => row.map((state, x) => [turnId, x, y, state])).flat();
-
-    await dbConnection.execute(squaresInsertSql, squaresInsertValues);
-    await dbConnection.execute('INSERT INTO moves (turn_id,disc,x, y) VALUES (?, ?, ?, ?)', [turnId, disc, x, y]);
+    await moveGateway.insert(dbConnection, turnRecord.id, disc, x, y);
     await dbConnection.commit();
   } finally {
     await dbConnection.end();

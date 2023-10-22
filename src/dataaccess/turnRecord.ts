@@ -6,4 +6,12 @@ export class TurnRecord {
     private _nextDisc: number,
     private _endAt: Date
   ) {}
+
+  get id() {
+    return this._id;
+  }
+
+  get nextDisc() {
+    return this._nextDisc;
+  }
 }
