@@ -10,6 +10,15 @@ const turnGateway = new TurnGateway();
 const moveGateway = new MoveGateway();
 const squareGateway = new SquareGateway();
 
+class FindLatestGameTurnByTurnCountDto {
+  constructor(
+    public turnCount: number,
+    public board: number[][],
+    public nextDisc: number | undefined,
+    public winnerDisc: number | undefined
+  ) {}
+}
+
 export class TurnSerivce {
   async findLatestGameTurnByTurnCount(turnCount: number) {
     const dbConnection = await connectMysql();
@@ -34,12 +43,7 @@ export class TurnSerivce {
         board[square.y][square.x] = square.disc;
       });
 
-      return {
-        turnCount,
-        board,
-        nextDisc: turnRecord.nextDisc,
-        winnerDisc: null,
-      };
+      return new FindLatestGameTurnByTurnCountDto(turnCount, board, turnRecord.nextDisc, undefined);
     } finally {
       await dbConnection.end();
     }
