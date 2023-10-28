@@ -8,7 +8,7 @@ export class Turn {
     private _gameId: number,
     private _turnCount: number,
     private _nextDisc: Disc,
-    private move: Move | undefined,
+    private _move: Move | undefined,
     private _board: Board,
     private _endAt: Date
   ) {}
@@ -42,5 +42,9 @@ export class Turn {
 
   get endAt() {
     return this._endAt;
+  }
+
+  get move() {
+    return this._move;
   }
 }
