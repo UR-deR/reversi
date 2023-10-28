@@ -2,7 +2,7 @@ import { TurnRecord } from './turnRecord';
 import mysql from 'mysql2/promise';
 
 export class TurnGateway {
-  async findForGameAndTurnCount(
+  async findByGameIdAndTurnCount(
     dbConnection: mysql.Connection,
     gameId: number,
     turnCount: number
