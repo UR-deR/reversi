@@ -1,4 +1,4 @@
-import { Board } from './board';
+import { Board, initialBoard } from './board';
 import { DISC, Disc } from './disc';
 import { Move } from './move';
 import { Point } from './point';
@@ -48,3 +48,6 @@ export class Turn {
     return this._move;
   }
 }
+
+export const getFirstTurn = (gameId: number, endAt: Date): Turn =>
+  new Turn(gameId, 0, DISC.DARK, undefined, initialBoard, endAt);
