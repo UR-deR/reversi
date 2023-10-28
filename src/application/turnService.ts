@@ -1,6 +1,6 @@
 import { toDisc } from '../domain/turn/disc';
-import { connectMysql } from '../dataaccess/connection';
-import { GameGateway } from '../dataaccess/gameGateway';
+import { connectMysql } from '../infrastructure/connection';
+import { GameGateway } from '../infrastructure/gameGateway';
 import { Point } from '../domain/turn/point';
 import { TurnRepository } from '../domain/turn/turnRepository';
 import { GameRepository } from '../domain/game/gameRepository';
