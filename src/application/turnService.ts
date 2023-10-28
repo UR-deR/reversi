@@ -1,9 +1,12 @@
+import { toDisc } from './../domain/disc';
 import { connectMysql } from '../dataaccess/connection';
 import { GameGateway } from '../dataaccess/gameGateway';
 import { MoveGateway } from '../dataaccess/moveGateway';
 import { SquareGateway } from '../dataaccess/squareGateway';
 import { TurnGateway } from '../dataaccess/turnGateway';
-import { DARK, LIGHT } from './constants';
+import { Board } from '../domain/board';
+import { Turn } from '../domain/turn';
+import { Point } from '../domain/point';
 
 const gameGateway = new GameGateway();
 const turnGateway = new TurnGateway();
@@ -79,13 +82,26 @@ export class TurnSerivce {
         board[square.y][square.x] = square.disc;
       });
 
-      board[y][x] = disc;
+      const previousTurn = new Turn(
+        gameRecord.id,
+        previousTurnCount,
+        toDisc(previousTurnRecord.nextDisc),
+        undefined,
+        new Board(board),
+        previousTurnRecord.endAt
+      );
 
-      const now = new Date();
-      const nextDisc = disc === DARK ? LIGHT : DARK;
-      const turnRecord = await turnGateway.insert(dbConnection, gameRecord.id, turnCount, nextDisc, now);
+      const newTurn = previousTurn.placeNext(toDisc(disc), new Point(x, y));
 
-      await squareGateway.insertAll(dbConnection, turnRecord.id, board);
+      const turnRecord = await turnGateway.insert(
+        dbConnection,
+        newTurn.gameId,
+        newTurn.turnCount,
+        newTurn.nextDisc,
+        newTurn.endAt
+      );
+
+      await squareGateway.insertAll(dbConnection, turnRecord.id, newTurn.board.discs);
 
       await moveGateway.insert(dbConnection, turnRecord.id, disc, x, y);
       await dbConnection.commit();
