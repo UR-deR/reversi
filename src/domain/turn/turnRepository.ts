@@ -1,7 +1,7 @@
 import { toDisc } from './disc';
-import { MoveGateway } from '../dataaccess/moveGateway';
-import { SquareGateway } from '../dataaccess/squareGateway';
-import { TurnGateway } from '../dataaccess/turnGateway';
+import { MoveGateway } from '../../dataaccess/moveGateway';
+import { SquareGateway } from '../../dataaccess/squareGateway';
+import { TurnGateway } from '../../dataaccess/turnGateway';
 import { Move } from './move';
 import { Point } from './point';
 import { Turn } from './turn';

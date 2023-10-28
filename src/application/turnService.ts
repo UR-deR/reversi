@@ -1,12 +1,14 @@
-import { toDisc } from './../domain/disc';
+import { toDisc } from '../domain/turn/disc';
 import { connectMysql } from '../dataaccess/connection';
 import { GameGateway } from '../dataaccess/gameGateway';
-import { Point } from '../domain/point';
-import { TurnRepository } from '../domain/turnRepository';
+import { Point } from '../domain/turn/point';
+import { TurnRepository } from '../domain/turn/turnRepository';
+import { GameRepository } from '../domain/game/gameRepository';
 
 const gameGateway = new GameGateway();
 
 const turnRepository = new TurnRepository();
+const gameRepository = new GameRepository();
 
 class FindLatestGameTurnByTurnCountDto {
   constructor(
@@ -22,13 +24,17 @@ export class TurnSerivce {
     const dbConnection = await connectMysql();
 
     try {
-      const gameRecord = await gameGateway.findLatest(dbConnection);
+      const game = await gameRepository.findLatest(dbConnection);
 
-      if (!gameRecord) {
+      if (!game) {
         throw new Error(`Game not found`);
       }
 
-      const turn = await turnRepository.findByGameIdAndTurnCount(dbConnection, gameRecord.id, turnCount);
+      if (!game.id) {
+        throw new Error(`Game id is undefined`);
+      }
+
+      const turn = await turnRepository.findByGameIdAndTurnCount(dbConnection, game.id, turnCount);
 
       return new FindLatestGameTurnByTurnCountDto(turnCount, turn.board.discs, turn.nextDisc, undefined);
     } finally {
@@ -41,13 +47,17 @@ export class TurnSerivce {
 
     try {
       //　1つ前のターンを取得する
-      const gameRecord = await gameGateway.findLatest(dbConnection);
+      const game = await gameRepository.findLatest(dbConnection);
 
-      if (!gameRecord) {
-        throw new Error(`Game not found. Turn count: ${turnCount}`);
+      if (!game) {
+        throw new Error(`Game not found`);
       }
 
-      const previousTurn = await turnRepository.findByGameIdAndTurnCount(dbConnection, gameRecord.id, turnCount - 1);
+      if (!game.id) {
+        throw new Error(`Game id is undefined`);
+      }
+
+      const previousTurn = await turnRepository.findByGameIdAndTurnCount(dbConnection, game.id, turnCount - 1);
 
       const newTurn = previousTurn.placeNext(toDisc(disc), new Point(x, y));
 
